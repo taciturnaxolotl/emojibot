@@ -42,14 +42,14 @@ const feature1 = async (
             });
             return;
         }
+        if (payload.text.includes(" ")) {
+            return;
+        }
 
         const form = new FormData();
         form.append("token", process.env.SLACK_BOT_USER_TOKEN!);
         form.append("mode", "data");
-        const emojiName =
-            payload.text.startsWith(":") && payload.text.endsWith(":")
-                ? payload.text.slice(1, -1).toLowerCase().replace(" ", "-")
-                : payload.text.toLowerCase().replace(" ", "-");
+        const emojiName = payload.text.replace(/:/g, "").trim();
         form.append("name", emojiName);
         const imgBuffer = await fetch(payload.files[0].url_private, {
             headers: {
