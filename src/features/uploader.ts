@@ -18,19 +18,19 @@ const feature1 = async (
             // only listen for payloads in #emojibot that have a file attached
             return;
         }
-        if (payload.text.split(" ").length > 1) {
-            context.client.chat.postEphemeral({
-                channel: payload.channel,
-                user: payload.user,
-                text: "Please only send one emoji at a time",
-            });
-            return;
-        }
         if (!payload.files || payload.files.length === 0) {
             context.client.chat.postEphemeral({
                 text: "Please attach an image to your message",
                 channel: payload.channel,
                 user: payload.user,
+            });
+            return;
+        }
+        if (payload.files.length >= 1) {
+            context.client.chat.postEphemeral({
+                channel: payload.channel,
+                user: payload.user,
+                text: "Please only send one emoji at a time",
             });
             return;
         }
@@ -48,8 +48,8 @@ const feature1 = async (
         form.append("mode", "data");
         const emojiName =
             payload.text.startsWith(":") && payload.text.endsWith(":")
-                ? payload.text.slice(1, -1).toLowerCase()
-                : payload.text.toLowerCase();
+                ? payload.text.slice(1, -1).toLowerCase().replace(" ", "-")
+                : payload.text.toLowerCase().replace(" ", "-");
         form.append("name", emojiName);
         const imgBuffer = await fetch(payload.files[0].url_private, {
             headers: {
