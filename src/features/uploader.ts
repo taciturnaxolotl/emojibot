@@ -26,7 +26,7 @@ const feature1 = async (
             });
             return;
         }
-        if (payload.files.length >= 1) {
+        if (payload.files.length > 1) {
             context.client.chat.postEphemeral({
                 channel: payload.channel,
                 user: payload.user,
