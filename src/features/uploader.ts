@@ -48,8 +48,8 @@ const feature1 = async (
         form.append("mode", "data");
         const emojiName =
             payload.text.startsWith(":") && payload.text.endsWith(":")
-                ? payload.text.slice(1, -1).toLowerCase().replace(" ", "-")
-                : payload.text.toLowerCase().replace(" ", "-");
+                ? payload.text.slice(1, -1).toLowerCase().replaceAll(" ", "-")
+                : payload.text.toLowerCase().replaceAll(" ", "-");
         form.append("name", emojiName);
         const imgBuffer = await fetch(payload.files[0].url_private, {
             headers: {
