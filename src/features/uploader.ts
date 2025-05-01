@@ -1,5 +1,5 @@
 import type { SlackApp } from "slack-edge";
-import { $ } from "bun";
+import { $, randomUUIDv7 } from "bun";
 import config from "../config";
 import { humanizeSlackError } from "../utils/translate";
 
@@ -49,24 +49,29 @@ const feature1 = async (
             return;
         }
 
+        const names = payload.text
+            .split(",")
+            .map((name) => name.replace(/:/g, "").trim().toLowerCase());
+        const primaryName = names[0];
+        const aliases = names.slice(1);
+
         const form = new FormData();
-        form.append("token", process.env.SLACK_BOT_USER_TOKEN!);
+        form.append("token", process.env.SLACK_BOT_USER_TOKEN ?? "");
         form.append("mode", "data");
-        const emojiName = payload.text.replace(/:/g, "").trim().toLowerCase();
-        form.append("name", emojiName);
+        form.append("name", primaryName);
+
         const imgBuffer = await fetch(payload.files[0].url_private, {
             headers: {
-                Cookie: process.env.SLACK_COOKIE!,
+                Cookie: process.env.SLACK_COOKIE ?? "",
             },
         }).then((res) => res.blob());
 
-        const randomUUID = crypto.randomUUID();
+        const randomUUID = randomUUIDv7();
         await Bun.write(`tmp/${randomUUID}.png`, imgBuffer);
         const blob = Bun.file(`tmp/${randomUUID}.png`);
 
         form.append("image", blob);
 
-        // No idea how much of this is necessary but I don't feel like figuring it out
         const res = await fetch(
             `https://${config.slackWorkspace}.slack.com/api/emoji.add`,
             {
@@ -83,25 +88,97 @@ const feature1 = async (
 
         console.log(
             res.ok
-                ? `💾 User ${payload.user} added the ${emojiName} emoji`
-                : `💥 User ${payload.user} failed to add the ${emojiName} emoji: ${res.error}`
+                ? `💾 User ${payload.user} added the ${primaryName} emoji`
+                : `💥 User ${payload.user} failed to add the ${primaryName} emoji: ${res.error}`
         );
 
+        const successfulAliases: string[] = [];
+        const failedAliases: string[] = [];
+
+        if (res.ok && aliases.length > 0) {
+            for (const alias of aliases) {
+                const aliasForm = new FormData();
+                aliasForm.append(
+                    "token",
+                    process.env.SLACK_BOT_USER_TOKEN ?? ""
+                );
+                aliasForm.append("mode", "alias");
+                aliasForm.append("name", alias);
+                aliasForm.append("alias_for", primaryName);
+
+                try {
+                    const aliasRes = await fetch(
+                        `https://${config.slackWorkspace}.slack.com/api/emoji.add`,
+                        {
+                            credentials: "include",
+                            method: "POST",
+                            body: aliasForm,
+                            headers: {
+                                Cookie: `Cookie ${process.env.SLACK_COOKIE}`,
+                            },
+                        }
+                    ).then(
+                        (res) =>
+                            res.json() as Promise<{
+                                ok: boolean;
+                                error?: string;
+                            }>
+                    );
+
+                    if (aliasRes.ok) {
+                        successfulAliases.push(alias);
+                        console.log(
+                            `💾 Added alias ${alias} for ${primaryName}`
+                        );
+                    } else {
+                        failedAliases.push(alias);
+                        console.log(
+                            `⚠️ Failed to add alias ${alias}: ${aliasRes.error}`
+                        );
+                    }
+                } catch (err) {
+                    failedAliases.push(alias);
+                    console.log(`💥 Error adding alias ${alias}: ${err}`);
+                }
+            }
+        }
+
+        let replyText = res.ok
+            ? `:${primaryName}: has been added`
+            : `Failed to add emoji:\n\`\`\`\n${humanizeSlackError(
+                  res
+              )}\n\`\`\``;
+
+        if (res.ok) {
+            if (successfulAliases.length > 0) {
+                replyText += ` with aliases: ${successfulAliases
+                    .map((a) => `:${a}:`)
+                    .join(" ")}`;
+            }
+            if (failedAliases.length > 0) {
+                replyText += `\n⚠️ Failed to create aliases: ${failedAliases.join(
+                    ", "
+                )}`;
+            }
+            replyText += `, thanks <@${payload.user}>!`;
+        }
+
         context.say({
-            text: res.ok
-                ? `:${emojiName}: has been added, thanks <@${payload.user}>!`
-                : `Failed to add emoji:
-\`\`\`
-${humanizeSlackError(res)}
-\`\`\``,
+            text: replyText,
             thread_ts: payload.ts,
         });
-        if (res.ok)
-            await app.client.reactions.add({
-                name: emojiName,
-                channel: payload.channel,
-                timestamp: payload.ts,
-            });
+
+        if (res.ok) {
+            try {
+                await app.client.reactions.add({
+                    name: primaryName,
+                    channel: payload.channel,
+                    timestamp: payload.ts,
+                });
+            } catch (error) {
+                console.log(`Failed to add reaction: ${error}`);
+            }
+        }
     });
 };
 
