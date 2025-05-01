@@ -45,6 +45,9 @@ const feature1 = async (
         if (payload.text.trim().includes(" ")) {
             return;
         }
+        if (payload.text.trim().includes("\n") || payload.text.trim() === "") {
+            return;
+        }
 
         const form = new FormData();
         form.append("token", process.env.SLACK_BOT_USER_TOKEN!);
