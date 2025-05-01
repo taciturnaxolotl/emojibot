@@ -2,6 +2,7 @@ import config from "../config";
 import { ModalView, SlackApp } from "slack-edge";
 
 function deleteView(emoji: string, thread_ts: string, user: string): ModalView {
+    const emojiList = emoji.split(",").map((e) => e.trim());
     return {
         callback_id: "delete_view",
         type: "modal",
@@ -22,14 +23,13 @@ function deleteView(emoji: string, thread_ts: string, user: string): ModalView {
         private_metadata: JSON.stringify({ emoji, thread_ts, user }),
         blocks: [
             {
-                type: "context",
-                elements: [
-                    {
-                        type: "plain_text",
-                        text: `Delete :${emoji}:?`,
-                        emoji: true,
-                    },
-                ],
+                type: "section",
+                text: {
+                    type: "mrkdwn",
+                    text: `Delete ${emojiList
+                        .map((e) => `\`:${e}:\``)
+                        .join(", ")}?`,
+                },
             },
         ],
     };
@@ -72,7 +72,7 @@ const feature2 = async (
 ) => {
     app.shortcut(
         "delete_emoji",
-        async () => { },
+        async () => {},
         async ({ context, payload, body }) => {
             if (context.channelId !== config.channel) {
                 await context.client.views.open({
@@ -107,7 +107,7 @@ const feature2 = async (
 
             const emojiName =
                 body.message.text.startsWith(":") &&
-                    body.message.text.endsWith(":")
+                body.message.text.endsWith(":")
                     ? body.message.text.slice(1, -1)
                     : body.message.text;
 

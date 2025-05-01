@@ -10,6 +10,12 @@ const feature1 = async (
         SLACK_APP_TOKEN: string;
     }>
 ) => {
+    app.message(/help/i, async ({ context }) => {
+        await context.say({
+            text: "Upload an image with a name to create a new emoji. You can add aliases by separating names with commas.\n\nFor example: `party-parrot, partyparrot` with an image will create :party-parrot: with :partyparrot: as an alias.",
+        });
+    });
+
     app.anyMessage(async ({ payload, context }) => {
         if (
             payload.subtype !== "file_share" ||
@@ -42,10 +48,11 @@ const feature1 = async (
             });
             return;
         }
-        if (payload.text.trim().includes(" ")) {
-            return;
-        }
-        if (payload.text.trim().includes("\n") || payload.text.trim() === "") {
+        if (
+            payload.text.trim().includes(" ") ||
+            payload.text.trim().includes("\n") ||
+            payload.text.trim() === ""
+        ) {
             return;
         }
 
@@ -152,15 +159,15 @@ const feature1 = async (
         if (res.ok) {
             if (successfulAliases.length > 0) {
                 replyText += ` with aliases: ${successfulAliases
-                    .map((a) => `:${a}:`)
-                    .join(" ")}`;
+                    .map((a) => `\`:${a}:\``)
+                    .join(", ")}`;
             }
             if (failedAliases.length > 0) {
-                replyText += `\n⚠️ Failed to create aliases: ${failedAliases.join(
-                    ", "
-                )}`;
+                replyText += `\n⚠️ Failed to create aliases: ${failedAliases
+                    .map((alias) => `\`:${alias}:\``)
+                    .join(", ")}`;
             }
-            replyText += `, thanks <@${payload.user}>!`;
+            replyText += `\nthanks <@${payload.user}>!`;
         }
 
         context.say({
