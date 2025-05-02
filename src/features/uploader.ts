@@ -10,12 +10,6 @@ const feature1 = async (
         SLACK_APP_TOKEN: string;
     }>
 ) => {
-    app.message(/help/i, async ({ context }) => {
-        await context.say({
-            text: "Upload an image with a name to create a new emoji. You can add aliases by separating names with commas.\n\nFor example: `party-parrot, partyparrot` with an image will create :party-parrot: with :partyparrot: as an alias.",
-        });
-    });
-
     app.anyMessage(async ({ payload, context }) => {
         if (
             payload.subtype !== "file_share" ||
