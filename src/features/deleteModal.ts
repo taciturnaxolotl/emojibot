@@ -91,15 +91,11 @@ const feature2 = async (
                 })
                 .then((res) => res.user?.is_admin);
 
-            if (
-                body.user.id !== body.message.user &&
-                !config.admins.includes(body.user.id) &&
-                !isAdmin
-            ) {
+            if (!config.admins.includes(body.user.id) && !isAdmin) {
                 await context.client.views.open({
                     trigger_id: payload.trigger_id,
                     view: errorView(
-                        "Only the OP or authorized admins can delete emojis added with emojibot."
+                        "Only authorized admins can delete emojis added with emojibot."
                     ),
                 });
                 return;
