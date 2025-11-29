@@ -5,6 +5,28 @@ const version = require("../package.json").version;
 console.log("----------------------------------\nEmojiBot Server\n----------------------------------\n")
 console.log(`🚀 Loading EmojiBot v${version}`);
 
+// Check required environment variables
+const requiredEnvVars = [
+    "SLACK_SIGNING_SECRET",
+    "SLACK_BOT_TOKEN",
+    "SLACK_APP_TOKEN",
+    "SLACK_BOT_USER_TOKEN",
+    "SLACK_COOKIE",
+    "SLACK_WORKSPACE",
+    "SLACK_CHANNEL",
+    "ADMINS",
+];
+
+const missingEnvVars = requiredEnvVars.filter((envVar) => !process.env[envVar]);
+
+if (missingEnvVars.length > 0) {
+    console.error(`❌ Missing required environment variables: ${missingEnvVars.join(", ")}`);
+    console.error("Please check your .env file or secrets configuration.");
+    process.exit(1);
+}
+
+console.log("✅ All required environment variables are set");
+
 const app = new SlackApp({
     env: {
         SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET!,
