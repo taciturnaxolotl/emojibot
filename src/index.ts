@@ -30,6 +30,18 @@ export default {
         switch (path) {
             case "/health":
                 try {
+                    // Check if required env vars are present
+                    if (!process.env.SLACK_BOT_TOKEN) {
+                        return new Response(JSON.stringify({
+                            status: "unhealthy",
+                            version: version,
+                            error: "SLACK_BOT_TOKEN not configured",
+                        }), {
+                            status: 503,
+                            headers: { "Content-Type": "application/json" },
+                        });
+                    }
+
                     // Test Slack API authentication
                     const response = await fetch("https://slack.com/api/auth.test", {
                         method: "POST",
