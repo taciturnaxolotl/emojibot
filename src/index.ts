@@ -25,61 +25,62 @@ export default {
     port: parseInt(process.env.PORT || "3000"),
     async fetch(request) {
         const url = new URL(request.url);
-        
-        // Health check endpoint
-        if (url.pathname === "/health") {
-            try {
-                // Test Slack API authentication
-                const response = await fetch("https://slack.com/api/auth.test", {
-                    method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${process.env.SLACK_BOT_TOKEN}`,
-                        "Content-Type": "application/x-www-form-urlencoded",
-                    },
-                });
-                
-                const data = await response.json();
-                
-                if (data.ok) {
-                    return new Response(JSON.stringify({
-                        status: "healthy",
-                        version: version,
-                        slack: {
-                            connected: true,
-                            team: data.team,
-                            user: data.user,
+        const path = url.pathname;
+
+        switch (path) {
+            case "/health":
+                try {
+                    // Test Slack API authentication
+                    const response = await fetch("https://slack.com/api/auth.test", {
+                        method: "POST",
+                        headers: {
+                            "Authorization": `Bearer ${process.env.SLACK_BOT_TOKEN}`,
+                            "Content-Type": "application/x-www-form-urlencoded",
                         },
-                        uptime: process.uptime(),
-                    }), {
-                        status: 200,
-                        headers: { "Content-Type": "application/json" },
                     });
-                } else {
+                    
+                    const data = await response.json();
+                    
+                    if (data.ok) {
+                        return new Response(JSON.stringify({
+                            status: "healthy",
+                            version: version,
+                            slack: {
+                                connected: true,
+                                team: data.team,
+                                user: data.user,
+                            },
+                            uptime: process.uptime(),
+                        }), {
+                            status: 200,
+                            headers: { "Content-Type": "application/json" },
+                        });
+                    } else {
+                        return new Response(JSON.stringify({
+                            status: "unhealthy",
+                            version: version,
+                            slack: {
+                                connected: false,
+                                error: data.error,
+                            },
+                        }), {
+                            status: 503,
+                            headers: { "Content-Type": "application/json" },
+                        });
+                    }
+                } catch (error) {
                     return new Response(JSON.stringify({
                         status: "unhealthy",
                         version: version,
-                        slack: {
-                            connected: false,
-                            error: data.error,
-                        },
+                        error: error.message,
                     }), {
                         status: 503,
                         headers: { "Content-Type": "application/json" },
                     });
                 }
-            } catch (error) {
-                return new Response(JSON.stringify({
-                    status: "unhealthy",
-                    version: version,
-                    error: error.message,
-                }), {
-                    status: 503,
-                    headers: { "Content-Type": "application/json" },
-                });
-            }
+            default:
+                return await app.run(request);
         }
-        
-        return await app.run(request);
     },
 };
 
