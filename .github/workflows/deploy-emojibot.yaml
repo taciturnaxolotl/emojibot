@@ -38,11 +38,33 @@ jobs:
       - name: Wait for service to start
         run: sleep 10
       
-      - name: Check service status
+      - name: Health check
         run: |
-          ssh emojibot@terebithia << 'EOF'
-            systemctl status emojibot.service --no-pager || true
-            echo ""
-            echo "Recent logs:"
-            journalctl -u emojibot.service -n 20 --no-pager
-          EOF
+          HEALTH_URL="https://emojibot.dunkirk.sh/health"
+          MAX_RETRIES=6
+          RETRY_DELAY=5
+          
+          for i in $(seq 1 $MAX_RETRIES); do
+            echo "Health check attempt $i/$MAX_RETRIES..."
+            
+            RESPONSE=$(curl -s -w "\n%{http_code}" "$HEALTH_URL" || echo "000")
+            HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+            BODY=$(echo "$RESPONSE" | sed '$d')
+            
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "✅ Service is healthy"
+              echo "$BODY" | jq .
+              exit 0
+            fi
+            
+            echo "❌ Health check failed with HTTP $HTTP_CODE"
+            echo "$BODY"
+            
+            if [ $i -lt $MAX_RETRIES ]; then
+              echo "Retrying in ${RETRY_DELAY}s..."
+              sleep $RETRY_DELAY
+            fi
+          done
+          
+          echo "❌ Health check failed after $MAX_RETRIES attempts"
+          exit 1
