@@ -22,7 +22,7 @@ for (const [feature, handler] of Object.entries(features)) {
 }
 
 export default {
-    port: 3000,
+    port: parseInt(process.env.PORT || "3000"),
     async fetch(request) {
         return await app.run(request);
     },
