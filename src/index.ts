@@ -78,8 +78,10 @@ export default {
                         headers: { "Content-Type": "application/json" },
                     });
                 }
-            default:
+            case "/slack":
                 return await app.run(request);
+            default:
+                return new Response("404 Not Found", { status: 404 });
         }
     },
 };
