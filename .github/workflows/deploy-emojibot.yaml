@@ -1,0 +1,48 @@
+name: Deploy Emojibot
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Tailscale
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+          use-cache: "true"
+      
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "StrictHostKeyChecking no" >> ~/.ssh/config
+      
+      - name: Deploy to server
+        run: |
+          ssh emojibot@terebithia << 'EOF'
+            cd /var/lib/emojibot/app
+            git fetch --all
+            git reset --hard origin/main
+            bun install
+            sudo /run/current-system/sw/bin/systemctl restart emojibot.service
+          EOF
+      
+      - name: Wait for service to start
+        run: sleep 10
+      
+      - name: Check service status
+        run: |
+          ssh emojibot@terebithia << 'EOF'
+            systemctl status emojibot.service --no-pager || true
+            echo ""
+            echo "Recent logs:"
+            journalctl -u emojibot.service -n 20 --no-pager
+          EOF
