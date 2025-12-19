@@ -6,16 +6,16 @@ async function deleteEmojis(emojiNamesStr: string, user: string) {
     const results = await Promise.all(
         emojiNames.map(async (emojiName) => {
             const form = new FormData();
+            form.append("token", process.env.SLACK_BOT_USER_TOKEN!);
+            form.append("name", emojiName);
             form.append("_x_reason", "customize-emoji-remove");
             form.append("_x_mode", "online");
-            form.append("name", emojiName);
-            form.append("token", process.env.SLACK_BOT_USER_TOKEN!);
             const res = await fetch(
                 `https://${config.slackWorkspace}.slack.com/api/emoji.remove`,
                 {
                     method: "POST",
                     headers: {
-                        Cookie: `Cookie ${process.env.SLACK_COOKIE}`,
+                        Cookie: `d=${process.env.SLACK_COOKIE}`,
                     },
                     body: form,
                 }
