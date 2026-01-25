@@ -1,5 +1,9 @@
 import type { SlackApp } from "slack-edge";
 import config from "../config";
+import { downloadSlackFile } from "../services/file-manager";
+
+// Cache for pre-downloaded images
+export const imageCache = new Map<string, Buffer>();
 
 export interface UploadState {
     messageTs: string;
@@ -101,7 +105,7 @@ const uploadModal = async (
                 type: "button",
                 text: {
                     type: "plain_text",
-                    text: "Upload",
+                    text: "as is",
                 },
                 style: "primary",
                 action_id: "upload_normal",
@@ -114,7 +118,7 @@ const uploadModal = async (
                 type: "button",
                 text: {
                     type: "plain_text",
-                    text: "Remove Background & Upload",
+                    text: "remove bg",
                 },
                 action_id: "upload_remove_bg",
                 value: JSON.stringify(state),
@@ -125,12 +129,23 @@ const uploadModal = async (
             type: "button",
             text: {
                 type: "plain_text",
-                text: "Cancel",
+                text: "nvm",
             },
             style: "danger",
             action_id: "upload_cancel",
             value: JSON.stringify(state),
         });
+
+        // Add working reaction first
+        try {
+            await context.client.reactions.add({
+                name: "emojbot-working",
+                channel: payload.channel,
+                timestamp: payload.ts,
+            });
+        } catch (error) {
+            console.log(`Failed to add working reaction: ${error}`);
+        }
 
         // Post thread message asking how to upload
         const promptText = isGif
@@ -155,6 +170,15 @@ const uploadModal = async (
                 },
             ],
         });
+
+        // Start downloading image in background
+        downloadSlackFile(state.file.slackUrl)
+            .then((buffer) => {
+                imageCache.set(state.file.fileId, buffer);
+            })
+            .catch((error) => {
+                console.log(`Failed to pre-download image: ${error}`);
+            });
     });
 };
 

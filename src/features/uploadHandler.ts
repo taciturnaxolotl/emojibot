@@ -3,7 +3,7 @@ import { downloadSlackFile } from "../services/file-manager";
 import { uploadEmoji, createAlias } from "../services/slack-emoji";
 import { createPipeline } from "../pipeline";
 import { humanizeSlackError } from "../utils/translate";
-import type { UploadState } from "./uploadModal";
+import { type UploadState, imageCache } from "./uploadModal";
 
 const uploadHandler = async (
     app: SlackApp<{
@@ -30,7 +30,7 @@ const uploadHandler = async (
         }
     );
 
-    // Handle cancel - delete the message
+    // Handle cancel - delete the message and clean up
     app.action(
         "upload_cancel",
         async () => {},
@@ -41,6 +41,13 @@ const uploadHandler = async (
             const state: UploadState = JSON.parse(value);
             const messageTs = body.message?.ts;
 
+            // Clean up cached image
+            imageCache.delete(state.file.fileId);
+
+            // Remove working reaction
+            await removeWorkingReaction(context, state);
+
+            // Delete the prompt message
             await context.client.chat.delete({
                 channel: state.channelId,
                 ts: messageTs,
@@ -86,8 +93,13 @@ async function handleUpload(
     });
 
     try {
-        // Download the file
-        let buffer = await downloadSlackFile(state.file.slackUrl);
+        // Use cached image if available, otherwise download
+        let buffer = imageCache.get(state.file.fileId);
+        if (buffer) {
+            imageCache.delete(state.file.fileId);
+        } else {
+            buffer = await downloadSlackFile(state.file.slackUrl);
+        }
         let warning = "";
 
         // Run through pipeline if background removal requested
@@ -137,6 +149,9 @@ async function handleUpload(
                     },
                 ],
             });
+            // Remove working reaction and add bad reaction
+            await removeWorkingReaction(context, state);
+            await addBadReaction(context, state);
             console.log(`Failed to upload emoji ${primaryName}: ${uploadResult.error}`);
             return;
         }
@@ -187,7 +202,8 @@ async function handleUpload(
             ],
         });
 
-        // Add reaction with the new emoji
+        // Remove working reaction and add the new emoji as reaction
+        await removeWorkingReaction(context, state);
         try {
             await app.client.reactions.add({
                 name: primaryName,
@@ -216,7 +232,35 @@ async function handleUpload(
             ],
         });
 
+        // Remove working reaction and add bad reaction
+        await removeWorkingReaction(context, state);
+        await addBadReaction(context, state);
+
         console.error(`Error processing upload: ${errorMessage}`);
+    }
+}
+
+async function removeWorkingReaction(context: any, state: UploadState) {
+    try {
+        await context.client.reactions.remove({
+            name: "emojbot-working",
+            channel: state.channelId,
+            timestamp: state.messageTs,
+        });
+    } catch (error) {
+        console.log(`Failed to remove working reaction: ${error}`);
+    }
+}
+
+async function addBadReaction(context: any, state: UploadState) {
+    try {
+        await context.client.reactions.add({
+            name: "emojibot-bad",
+            channel: state.channelId,
+            timestamp: state.messageTs,
+        });
+    } catch (error) {
+        console.log(`Failed to add bad reaction: ${error}`);
     }
 }
 
