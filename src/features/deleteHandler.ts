@@ -16,7 +16,7 @@ async function deleteEmojis(emojiNamesStr: string, user: string) {
                     credentials: "include",
                     method: "POST",
                     headers: {
-                        Cookie: `Cookie ${process.env.SLACK_COOKIE}`,
+                        Cookie: process.env.SLACK_COOKIE!,
                     },
                     body: form,
                 }

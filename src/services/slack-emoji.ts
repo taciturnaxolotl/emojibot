@@ -27,7 +27,7 @@ export async function uploadEmoji(name: string, buffer: Buffer): Promise<EmojiRe
             method: "POST",
             body: form,
             headers: {
-                Cookie: `Cookie ${process.env.SLACK_COOKIE}`,
+                Cookie: process.env.SLACK_COOKIE!,
             },
         }
     ).then((res) => res.json() as Promise<EmojiResult>);
@@ -51,7 +51,7 @@ export async function createAlias(aliasName: string, targetName: string): Promis
             method: "POST",
             body: form,
             headers: {
-                Cookie: `Cookie ${process.env.SLACK_COOKIE}`,
+                Cookie: process.env.SLACK_COOKIE!,
             },
         }
     ).then((res) => res.json() as Promise<EmojiResult>);
