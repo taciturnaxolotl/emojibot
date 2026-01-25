@@ -1,5 +1,6 @@
 import { SlackApp } from "slack-edge";
 import * as features from "./features/index";
+import { cleanupOldTempFiles } from "./services/file-manager";
 const version = require("../package.json").version;
 
 console.log("----------------------------------\nEmojiBot Server\n----------------------------------\n")
@@ -42,6 +43,11 @@ for (const [feature, handler] of Object.entries(features)) {
     console.log(`📦 ${feature} loaded`);
     handler(app);
 }
+
+// Run cleanup every 30 minutes
+setInterval(() => cleanupOldTempFiles(), 30 * 60 * 1000);
+// Also run once at startup to clear any existing orphans
+cleanupOldTempFiles();
 
 export default {
     port: parseInt(process.env.PORT || "3000"),

@@ -1,5 +1,6 @@
 import { randomUUIDv7 } from "bun";
 import { $ } from "bun";
+import { readdir } from "fs/promises";
 
 export async function downloadSlackFile(url: string): Promise<Buffer> {
     const response = await fetch(url, {
@@ -28,5 +29,24 @@ export async function cleanupTempFile(path: string): Promise<void> {
         await $`rm ${path}`;
     } catch {
         console.warn(`Failed to cleanup temp file: ${path}`);
+    }
+}
+
+export async function cleanupOldTempFiles(maxAgeMs: number = 60 * 60 * 1000): Promise<void> {
+    const tmpDir = "tmp";
+    const now = Date.now();
+
+    try {
+        const files = await readdir(tmpDir);
+        for (const file of files) {
+            const filePath = `${tmpDir}/${file}`;
+            const stat = await Bun.file(filePath).stat();
+            if (now - stat.mtime.getTime() > maxAgeMs) {
+                await cleanupTempFile(filePath);
+                console.log(`Cleaned up old temp file: ${filePath}`);
+            }
+        }
+    } catch (error) {
+        console.warn(`Failed to cleanup temp files: ${error}`);
     }
 }
