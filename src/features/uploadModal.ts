@@ -94,42 +94,64 @@ const uploadModal = async (
             emojiName,
         };
 
+        // Build action buttons
+        const isGif = state.file.mimeType === "image/gif";
+        const actionButtons: any[] = [
+            {
+                type: "button",
+                text: {
+                    type: "plain_text",
+                    text: "Upload",
+                },
+                style: "primary",
+                action_id: "upload_normal",
+                value: JSON.stringify(state),
+            },
+        ];
+
+        if (!isGif) {
+            actionButtons.push({
+                type: "button",
+                text: {
+                    type: "plain_text",
+                    text: "Remove Background & Upload",
+                },
+                action_id: "upload_remove_bg",
+                value: JSON.stringify(state),
+            });
+        }
+
+        actionButtons.push({
+            type: "button",
+            text: {
+                type: "plain_text",
+                text: "Cancel",
+            },
+            style: "danger",
+            action_id: "upload_cancel",
+            value: JSON.stringify(state),
+        });
+
         // Post thread message asking how to upload
+        const promptText = isGif
+            ? `Would you like to upload this as \`:${emojiName}:\`?`
+            : `How would you like to upload \`:${emojiName}:\`?`;
+
         await context.client.chat.postMessage({
             channel: payload.channel,
             thread_ts: payload.ts,
-            text: `How would you like to upload \`:${emojiName}:\`?`,
+            text: promptText,
             blocks: [
                 {
                     type: "section",
                     text: {
                         type: "mrkdwn",
-                        text: `How would you like to upload \`:${emojiName}:\`?`,
+                        text: promptText,
                     },
                 },
                 {
                     type: "actions",
-                    elements: [
-                        {
-                            type: "button",
-                            text: {
-                                type: "plain_text",
-                                text: "Upload",
-                            },
-                            style: "primary",
-                            action_id: "upload_normal",
-                            value: JSON.stringify(state),
-                        },
-                        {
-                            type: "button",
-                            text: {
-                                type: "plain_text",
-                                text: "Remove Background & Upload",
-                            },
-                            action_id: "upload_remove_bg",
-                            value: JSON.stringify(state),
-                        },
-                    ],
+                    elements: actionButtons,
                 },
             ],
         });

@@ -13,9 +13,10 @@ async function deleteEmojis(emojiNamesStr: string, user: string) {
             const res = await fetch(
                 `https://${config.slackWorkspace}.slack.com/api/emoji.remove`,
                 {
+                    credentials: "include",
                     method: "POST",
                     headers: {
-                        Cookie: `d=${process.env.SLACK_COOKIE}`,
+                        Cookie: `Cookie ${process.env.SLACK_COOKIE}`,
                     },
                     body: form,
                 }
@@ -46,12 +47,12 @@ async function deleteEmojis(emojiNamesStr: string, user: string) {
 
     let status = "";
     if (successful.length > 0) {
-        status += `Removed: ${successful.join(", ")}\n`;
+        status += `Removed: ${successful.join(", ")}`;
     }
     if (failed.length > 0) {
-        status += `Failed to remove: ${failed.join(", ")}\n`;
+        if (successful.length > 0) status += "\n";
+        status += `Failed to remove: ${failed.join(", ")}`;
     }
-    status += `\nThanks <@${user}>!`;
 
     return status;
 }

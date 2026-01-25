@@ -29,6 +29,24 @@ const uploadHandler = async (
             await handleUpload(app, payload, context, body, true);
         }
     );
+
+    // Handle cancel - delete the message
+    app.action(
+        "upload_cancel",
+        async () => {},
+        async ({ payload, context, body }) => {
+            const value = payload.value ?? body.actions?.[0]?.value;
+            if (!value) return;
+
+            const state: UploadState = JSON.parse(value);
+            const messageTs = body.message?.ts;
+
+            await context.client.chat.delete({
+                channel: state.channelId,
+                ts: messageTs,
+            });
+        }
+    );
 };
 
 async function handleUpload(
