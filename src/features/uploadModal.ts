@@ -1,0 +1,139 @@
+import type { SlackApp } from "slack-edge";
+import config from "../config";
+
+export interface UploadState {
+    messageTs: string;
+    channelId: string;
+    userId: string;
+    file: {
+        fileId: string;
+        slackUrl: string;
+        suggestedName: string;
+        mimeType: string;
+    };
+    emojiName: string;
+}
+
+function extractEmojiName(text: string, filename: string): string {
+    // If text looks like an emoji name (no spaces, not empty)
+    const trimmed = text.trim();
+    if (trimmed && !trimmed.includes(" ") && !trimmed.includes("\n")) {
+        // Take the first name if there are commas
+        const firstName = trimmed.split(",")[0].replace(/:/g, "").trim().toLowerCase();
+        if (firstName) {
+            return firstName;
+        }
+    }
+
+    // Fall back to filename without extension
+    const baseName = filename.replace(/\.[^/.]+$/, "");
+    return baseName.toLowerCase().replace(/[^a-z0-9_-]/g, "_");
+}
+
+const uploadModal = async (
+    app: SlackApp<{
+        SLACK_SIGNING_SECRET: string;
+        SLACK_BOT_TOKEN: string;
+        SLACK_APP_TOKEN: string;
+    }>
+) => {
+    app.anyMessage(async ({ payload, context }) => {
+        if (
+            payload.subtype !== "file_share" ||
+            payload.channel !== config.channel
+        ) {
+            return;
+        }
+
+        if (!payload.files || payload.files.length === 0) {
+            return;
+        }
+
+        // Filter to only image files with required properties
+        const imageFiles = payload.files.filter(
+            (file) => file.mimetype?.startsWith("image/") && file.id && file.url_private
+        );
+
+        if (imageFiles.length === 0) {
+            return;
+        }
+
+        // For now, only handle single file uploads
+        if (imageFiles.length > 1) {
+            await context.client.chat.postMessage({
+                channel: payload.channel,
+                thread_ts: payload.ts,
+                text: "Please upload one image at a time.",
+            });
+            return;
+        }
+
+        const file = imageFiles[0];
+        const emojiName = extractEmojiName(payload.text ?? "", file.name ?? "emoji");
+
+        // Validate emoji name
+        if (!emojiName || emojiName.includes(" ") || emojiName.includes("\n")) {
+            await context.client.chat.postMessage({
+                channel: payload.channel,
+                thread_ts: payload.ts,
+                text: "Please include an emoji name in your message (no spaces).",
+            });
+            return;
+        }
+
+        const state: UploadState = {
+            messageTs: payload.ts,
+            channelId: payload.channel,
+            userId: payload.user,
+            file: {
+                fileId: file.id!,
+                slackUrl: file.url_private!,
+                suggestedName: emojiName,
+                mimeType: file.mimetype ?? "image/png",
+            },
+            emojiName,
+        };
+
+        // Post thread message asking how to upload
+        await context.client.chat.postMessage({
+            channel: payload.channel,
+            thread_ts: payload.ts,
+            text: `How would you like to upload \`:${emojiName}:\`?`,
+            blocks: [
+                {
+                    type: "section",
+                    text: {
+                        type: "mrkdwn",
+                        text: `How would you like to upload \`:${emojiName}:\`?`,
+                    },
+                },
+                {
+                    type: "actions",
+                    elements: [
+                        {
+                            type: "button",
+                            text: {
+                                type: "plain_text",
+                                text: "Upload",
+                            },
+                            style: "primary",
+                            action_id: "upload_normal",
+                            value: JSON.stringify(state),
+                        },
+                        {
+                            type: "button",
+                            text: {
+                                type: "plain_text",
+                                text: "Remove Background & Upload",
+                            },
+                            action_id: "upload_remove_bg",
+                            value: JSON.stringify(state),
+                        },
+                    ],
+                },
+            ],
+        });
+    });
+};
+
+export default uploadModal;

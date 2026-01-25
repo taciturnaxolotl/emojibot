@@ -5,6 +5,7 @@
     "license": "MIT",
     "dependencies": {
         "@slack/bolt": "^3.8.1",
+        "replicate": "^1.4.0",
         "slack-edge": "^0.13.0"
     },
     "peerDependencies": {
