@@ -2,7 +2,7 @@ import config from "../config";
 import { SlackApp } from "slack-edge";
 
 async function deleteEmojis(emojiNamesStr: string, user: string) {
-    const emojiNames = emojiNamesStr.split(",").map((name) => name.trim());
+    const emojiNames = emojiNamesStr.split(",").map((name) => name.trim().toLowerCase());
     const results = await Promise.all(
         emojiNames.map(async (emojiName) => {
             const form = new FormData();
