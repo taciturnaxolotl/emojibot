@@ -9,6 +9,15 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - user: emojibot-hackclub
+            service: emojibot-hackclub.service
+            url: https://hc.emojibot.dunkirk.sh/health
+          - user: emojibot-df1317
+            service: emojibot-df1317.service
+            url: https://df.emojibot.dunkirk.sh/health
     steps:
       - uses: actions/checkout@v3
       
@@ -27,12 +36,12 @@ jobs:
       
       - name: Deploy to server
         run: |
-          ssh emojibot@terebithia << 'EOF'
-            cd /var/lib/emojibot/app
+          ssh ${{ matrix.user }}@terebithia << 'EOF'
+            cd /var/lib/${{ matrix.user }}/app
             git fetch --all
             git reset --hard origin/main
             bun install
-            sudo /run/current-system/sw/bin/systemctl restart emojibot.service
+            sudo /run/current-system/sw/bin/systemctl restart ${{ matrix.service }}
           EOF
       
       - name: Wait for service to start
@@ -40,7 +49,7 @@ jobs:
       
       - name: Health check
         run: |
-          HEALTH_URL="https://emojibot.dunkirk.sh/health"
+          HEALTH_URL="${{ matrix.url }}?detailed=true"
           MAX_RETRIES=6
           RETRY_DELAY=5
           
@@ -52,9 +61,20 @@ jobs:
             BODY=$(echo "$RESPONSE" | sed '$d')
             
             if [ "$HTTP_CODE" = "200" ]; then
-              echo "✅ Service is healthy"
-              echo "$BODY" | jq .
-              exit 0
+              STATUS=$(echo "$BODY" | jq -r '.status // "unknown"')
+              
+              if [ "$STATUS" = "healthy" ]; then
+                echo "✅ Service is healthy"
+                echo "$BODY" | jq '.'
+                exit 0
+              elif [ "$STATUS" = "degraded" ]; then
+                echo "⚠️  Service is degraded but responding"
+                echo "$BODY" | jq '.'
+                exit 0
+              else
+                echo "⚠️  Service returned HTTP 200 but status is: $STATUS"
+                echo "$BODY" | jq '.'
+              fi
             fi
             
             echo "❌ Health check failed with HTTP $HTTP_CODE"
