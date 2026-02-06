@@ -1,6 +1,6 @@
 import config from "../config";
 
-const MODEL_VERSION = "95fcc2a26d3899cd6c2691c900465aaeff466285a65c14638cc5f36f34befaf1";
+const MODEL_VERSION = "a029dff38972b5fda4ec5d75d7d1cd25aeff621d2cf4946a41055d7db66b80bc";
 
 export async function removeBackground(imageBuffer: Buffer): Promise<Buffer> {
     const base64 = imageBuffer.toString("base64");
@@ -9,7 +9,7 @@ export async function removeBackground(imageBuffer: Buffer): Promise<Buffer> {
 
     // Call Hack Club AI proxy directly with version in URL path
     // The proxy expects: /replicate/models/:owner/:model:version/predictions
-    const url = `${config.replicateBaseUrl}/models/lucataco/remove-bg:${MODEL_VERSION}/predictions`;
+    const url = `${config.replicateBaseUrl}/models/851-labs/background-remover:${MODEL_VERSION}/predictions`;
 
     const response = await fetch(url, {
         method: "POST",
@@ -34,7 +34,7 @@ export async function removeBackground(imageBuffer: Buffer): Promise<Buffer> {
     // The response contains the prediction result with output URL
     const outputUrl = data.output;
     if (typeof outputUrl !== "string") {
-        throw new Error("Unexpected output from remove-bg model: " + JSON.stringify(data));
+        throw new Error(`Unexpected output from remove-bg model: ${JSON.stringify(data)}`);
     }
 
     const imageResponse = await fetch(outputUrl);
