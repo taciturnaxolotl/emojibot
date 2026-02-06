@@ -1,51 +1,7 @@
 import config from "../config";
 import { ModalView, SlackApp } from "slack-edge";
-
-function retryView(
-	emoji: string,
-	emojiURL: string,
-	thread_ts: string,
-	user: string,
-): ModalView {
-	return {
-		callback_id: "retry_view",
-		type: "modal",
-		title: {
-			type: "plain_text",
-			text: "Confirm Retry",
-		},
-		submit: {
-			type: "plain_text",
-			text: "Confirm",
-			emoji: true,
-		},
-		close: {
-			type: "plain_text",
-			text: "Cancel",
-			emoji: true,
-		},
-		private_metadata: JSON.stringify({ emoji, emojiURL, thread_ts, user }),
-		blocks: [
-			{
-				type: "context",
-				elements: [
-					{
-						type: "plain_text",
-						text: `Are you sure you want to retry uploading :${emoji}:? This will use the same file that was originally uploaded.`,
-						emoji: true,
-					},
-				],
-			},
-			{
-				type: "image",
-				slack_file: {
-					url: emojiURL,
-				},
-				alt_text: "uploaded emoji file",
-			},
-		],
-	};
-}
+import { downloadSlackFile } from "../services/file-manager";
+import { type UploadState, imageCache } from "./uploadModal";
 
 function errorView(reason: string): ModalView {
 	return {
@@ -117,20 +73,122 @@ const feature2 = async (
 				return;
 			}
 
-			const emojiName =
-				body.message.text.startsWith(":") && body.message.text.endsWith(":")
-					? body.message.text.slice(1, -1)
-					: body.message.text;
+			if (!body.message.files || body.message.files.length === 0) {
+				await context.client.views.open({
+					trigger_id: payload.trigger_id,
+					view: errorView("No file found in the message."),
+				});
+				return;
+			}
 
-			await context.client.views.open({
-				trigger_id: payload.trigger_id,
-				view: retryView(
-					emojiName,
-					body.message.files[0].url_private!,
-					body.message_ts,
-					body.user.id,
-				),
+			const file = body.message.files[0];
+			if (!file.url_private) {
+				await context.client.views.open({
+					trigger_id: payload.trigger_id,
+					view: errorView("File URL not found."),
+				});
+				return;
+			}
+
+			const emojiName =
+				body.message.text?.startsWith(":") && body.message.text?.endsWith(":")
+					? body.message.text.slice(1, -1)
+					: body.message.text ?? "emoji";
+
+			const state: UploadState = {
+				messageTs: body.message_ts,
+				channelId: context.channelId,
+				userId: body.user.id,
+				file: {
+					fileId: file.id ?? "",
+					slackUrl: file.url_private,
+					mimeType: file.mimetype ?? "image/png",
+				},
+				emojiName,
+			};
+
+			// Build action buttons
+			const isGif = state.file.mimeType === "image/gif";
+			const actionButtons: any[] = [
+				{
+					type: "button",
+					text: {
+						type: "plain_text",
+						text: "as is",
+					},
+					style: "primary",
+					action_id: "retry_normal",
+					value: JSON.stringify(state),
+				},
+			];
+
+			if (!isGif) {
+				actionButtons.push({
+					type: "button",
+					text: {
+						type: "plain_text",
+						text: "remove bg",
+					},
+					action_id: "retry_remove_bg",
+					value: JSON.stringify(state),
+				});
+			}
+
+			actionButtons.push({
+				type: "button",
+				text: {
+					type: "plain_text",
+					text: "nvm",
+				},
+				style: "danger",
+				action_id: "retry_cancel",
+				value: JSON.stringify(state),
 			});
+
+			// Add working reaction
+			try {
+				await context.client.reactions.add({
+					name: "emojbot-working",
+					channel: context.channelId,
+					timestamp: body.message_ts,
+				});
+			} catch (error) {
+				console.log(`Failed to add working reaction: ${error}`);
+			}
+
+			// Build prompt text
+			const promptText = isGif
+				? `Would you like to retry uploading \`:${emojiName}:\`?`
+				: `How would you like to retry uploading \`:${emojiName}:\`?`;
+
+			// Post thread message asking how to retry
+			await context.client.chat.postMessage({
+				channel: context.channelId,
+				thread_ts: body.message_ts,
+				text: promptText,
+				blocks: [
+					{
+						type: "section",
+						text: {
+							type: "mrkdwn",
+							text: promptText,
+						},
+					},
+					{
+						type: "actions",
+						elements: actionButtons,
+					},
+				],
+			});
+
+			// Start downloading image in background
+			downloadSlackFile(state.file.slackUrl)
+				.then((buffer) => {
+					imageCache.set(state.file.fileId, buffer);
+				})
+				.catch((error) => {
+					console.log(`Failed to pre-download image: ${error}`);
+				});
 		},
 	);
 };
