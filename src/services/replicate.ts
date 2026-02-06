@@ -2,7 +2,7 @@ import Replicate from "replicate";
 import config from "../config";
 
 const MODEL_ID =
-	"851-labs/background-remover:a029dff38972b5fda4ec5d75d7d1cd25aeff621d2cf4946a41055d7db66b80bc";
+	"lucataco/remove-bg:95fcc2a26d3899cd6c2691c900465aaeff466285a65c14638cc5f36f34befaf1";
 
 export async function removeBackground(imageBuffer: Buffer): Promise<Buffer> {
 	const base64 = imageBuffer.toString("base64");
