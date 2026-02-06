@@ -12,13 +12,24 @@ async function deleteEmojis(emojiNamesStr: string, user: string) {
 			form.append("name", emojiName);
 			form.append("_x_reason", "customize-emoji-remove");
 			form.append("_x_mode", "online");
+
+			// Build URL with query parameters (required by Slack)
+			const slackRoute = `${process.env.SLACK_ENTERPRISE_ID}:${process.env.SLACK_TEAM_ID}`;
+			const queryParams = new URLSearchParams({
+				_x_id: `${Date.now()}.${Math.random()}`,
+				slack_route: slackRoute,
+				_x_version_ts: "noversion",
+				fp: "eb",
+				_x_num_retries: "0",
+			});
+
 			const res = await fetch(
-				`https://${config.slackWorkspace}.slack.com/api/emoji.remove`,
+				`https://${config.slackWorkspace}.slack.com/api/emoji.remove?${queryParams.toString()}`,
 				{
 					credentials: "include",
 					method: "POST",
 					headers: {
-						Cookie: process.env.SLACK_COOKIE!,
+						cookie: process.env.SLACK_COOKIE!,
 					},
 					body: form,
 				},
