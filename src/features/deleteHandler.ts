@@ -14,7 +14,10 @@ async function deleteEmojis(emojiNamesStr: string, user: string) {
 			form.append("_x_mode", "online");
 
 			// Build URL with query parameters (required by Slack)
-			const slackRoute = `${process.env.SLACK_ENTERPRISE_ID}:${process.env.SLACK_TEAM_ID}`;
+			// For enterprise: "E09V59WQY1E:T0266FRGM", for non-enterprise: just "T0266FRGM"
+			const slackRoute = process.env.SLACK_ENTERPRISE_ID
+				? `${process.env.SLACK_ENTERPRISE_ID}:${process.env.SLACK_TEAM_ID}`
+				: process.env.SLACK_TEAM_ID!;
 			const queryParams = new URLSearchParams({
 				_x_id: `${Date.now()}.${Math.random()}`,
 				slack_route: slackRoute,

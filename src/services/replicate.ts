@@ -1,44 +1,33 @@
+import Replicate from "replicate";
 import config from "../config";
 
-const MODEL_VERSION =
-	"a029dff38972b5fda4ec5d75d7d1cd25aeff621d2cf4946a41055d7db66b80bc";
+const MODEL_ID =
+	"851-labs/background-remover:a029dff38972b5fda4ec5d75d7d1cd25aeff621d2cf4946a41055d7db66b80bc";
 
 export async function removeBackground(imageBuffer: Buffer): Promise<Buffer> {
 	const base64 = imageBuffer.toString("base64");
 	const mimeType = "image/png";
 	const dataUri = `data:${mimeType};base64,${base64}`;
 
-	// Call Hack Club AI proxy directly with version in URL path
-	// The proxy expects: /replicate/models/:owner/:model:version/predictions
-	const url = `${config.replicateBaseUrl}/models/851-labs/background-remover:${MODEL_VERSION}/predictions`;
-
-	const response = await fetch(url, {
-		method: "POST",
-		headers: {
-			Authorization: `Bearer ${process.env.HACKCLUB_AI_TOKEN}`,
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify({
-			input: {
-				image: dataUri,
-			},
-		}),
+	const replicate = new Replicate({
+		auth: process.env.HACKCLUB_AI_TOKEN!,
+		baseUrl: config.replicateBaseUrl,
 	});
 
-	if (!response.ok) {
-		const text = await response.text();
-		throw new Error(
-			`removeBackground: Request to ${url} failed with status ${response.status} ${response.statusText}: ${text}`,
-		);
-	}
+	const input = { image: dataUri };
+	const output = await replicate.run(MODEL_ID, { input });
 
-	const data = await response.json();
-
-	// The response contains the prediction result with output URL
-	const outputUrl = data.output;
-	if (typeof outputUrl !== "string") {
+	// Handle different output formats
+	let outputUrl: string;
+	if (typeof output === "string") {
+		outputUrl = output;
+	} else if (output && typeof output.url === "function") {
+		outputUrl = output.url();
+	} else if (output && typeof output === "object" && "url" in output) {
+		outputUrl = output.url as string;
+	} else {
 		throw new Error(
-			`Unexpected output from remove-bg model: ${JSON.stringify(data)}`,
+			`Unexpected output from remove-bg model: ${JSON.stringify(output)}`,
 		);
 	}
 
