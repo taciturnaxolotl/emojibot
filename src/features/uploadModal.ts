@@ -22,14 +22,14 @@ function extractEmojiName(text: string, filename: string): string {
 	// If text looks like an emoji name (no spaces, not empty)
 	const trimmed = text.trim();
 	if (trimmed && !trimmed.includes(" ") && !trimmed.includes("\n")) {
-		// Take the first name if there are commas
-		const firstName = trimmed
-			.split(",")[0]
-			.replace(/:/g, "")
-			.trim()
-			.toLowerCase();
-		if (firstName) {
-			return firstName;
+		// Keep every comma-separated name: the first becomes the emoji,
+		// the rest are handed to uploadHandler as aliases of it.
+		const names = trimmed
+			.split(",")
+			.map((name: string) => name.replace(/:/g, "").trim().toLowerCase())
+			.filter((name: string) => name.length > 0);
+		if (names.length > 0) {
+			return names.join(",");
 		}
 	}
 
