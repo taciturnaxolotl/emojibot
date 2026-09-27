@@ -8,14 +8,14 @@
 		"replicate": "^1.4.0",
 		"slack-edge": "^0.13.0"
 	},
-	"peerDependencies": {
-		"typescript": "^5.0.0"
-	},
 	"devDependencies": {
-		"@types/bun": "^1.2.11"
+		"@types/bun": "^1.2.11",
+		"typescript": "^5.7.3"
 	},
 	"scripts": {
 		"dev": "bun --watch src/index.ts",
+		"test": "bun test",
+		"typecheck": "tsc",
 		"build": "bun build --compile --minify --sourcemap ./src/index.ts --outfile dist/emojibot",
 		"ngrok": "ngrok http 3000 --domain=casual-renewing-reptile.ngrok-free.app"
 	}

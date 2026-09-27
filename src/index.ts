@@ -56,87 +56,60 @@ setInterval(() => cleanupOldTempFiles(), 30 * 60 * 1000);
 // Also run once at startup to clear any existing orphans
 cleanupOldTempFiles();
 
+function json(status: number, body: Record<string, unknown>) {
+	return new Response(JSON.stringify({ version, ...body }), {
+		status,
+		headers: { "Content-Type": "application/json" },
+	});
+}
+
+async function health() {
+	if (!process.env.SLACK_BOT_TOKEN) {
+		return json(503, {
+			status: "unhealthy",
+			error: "SLACK_BOT_TOKEN not configured",
+		});
+	}
+
+	try {
+		const response = await fetch("https://slack.com/api/auth.test", {
+			method: "POST",
+			headers: {
+				Authorization: `Bearer ${process.env.SLACK_BOT_TOKEN}`,
+				"Content-Type": "application/x-www-form-urlencoded",
+			},
+		});
+		const data = (await response.json()) as {
+			ok: boolean;
+			team?: string;
+			user?: string;
+			error?: string;
+		};
+
+		return data.ok
+			? json(200, {
+					status: "healthy",
+					slack: { connected: true, team: data.team, user: data.user },
+					uptime: process.uptime(),
+				})
+			: json(503, {
+					status: "unhealthy",
+					slack: { connected: false, error: data.error },
+				});
+	} catch (error) {
+		return json(503, {
+			status: "unhealthy",
+			error: error instanceof Error ? error.message : "Unknown error",
+		});
+	}
+}
+
 export default {
 	port: parseInt(process.env.PORT || "3000"),
-	async fetch(request) {
-		const url = new URL(request.url);
-		const path = url.pathname;
-
-		switch (path) {
+	async fetch(request: Request) {
+		switch (new URL(request.url).pathname) {
 			case "/health":
-				try {
-					// Check if required env vars are present
-					if (!process.env.SLACK_BOT_TOKEN) {
-						return new Response(
-							JSON.stringify({
-								status: "unhealthy",
-								version: version,
-								error: "SLACK_BOT_TOKEN not configured",
-							}),
-							{
-								status: 503,
-								headers: { "Content-Type": "application/json" },
-							},
-						);
-					}
-
-					// Test Slack API authentication
-					const response = await fetch("https://slack.com/api/auth.test", {
-						method: "POST",
-						headers: {
-							Authorization: `Bearer ${process.env.SLACK_BOT_TOKEN}`,
-							"Content-Type": "application/x-www-form-urlencoded",
-						},
-					});
-
-					const data = await response.json();
-
-					if (data.ok) {
-						return new Response(
-							JSON.stringify({
-								status: "healthy",
-								version: version,
-								slack: {
-									connected: true,
-									team: data.team,
-									user: data.user,
-								},
-								uptime: process.uptime(),
-							}),
-							{
-								status: 200,
-								headers: { "Content-Type": "application/json" },
-							},
-						);
-					} else {
-						return new Response(
-							JSON.stringify({
-								status: "unhealthy",
-								version: version,
-								slack: {
-									connected: false,
-									error: data.error,
-								},
-							}),
-							{
-								status: 503,
-								headers: { "Content-Type": "application/json" },
-							},
-						);
-					}
-				} catch (error) {
-					return new Response(
-						JSON.stringify({
-							status: "unhealthy",
-							version: version,
-							error: error.message,
-						}),
-						{
-							status: 503,
-							headers: { "Content-Type": "application/json" },
-						},
-					);
-				}
+				return health();
 			case "/slack":
 				return await app.run(request);
 			default:

@@ -23,7 +23,7 @@ export async function createTempFile(
 ): Promise<string> {
 	const filename = `${randomUUIDv7()}.${ext}`;
 	const path = `tmp/${filename}`;
-	await Bun.write(path, buffer);
+	await Bun.write(path, new Uint8Array(buffer));
 	return path;
 }
 

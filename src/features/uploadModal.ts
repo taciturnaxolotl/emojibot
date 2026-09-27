@@ -12,7 +12,6 @@ export interface UploadState {
 	file: {
 		fileId: string;
 		slackUrl: string;
-		suggestedName: string;
 		mimeType: string;
 	};
 	emojiName: string;
@@ -96,7 +95,6 @@ const uploadModal = async (
 			file: {
 				fileId: file.id!,
 				slackUrl: file.url_private!,
-				suggestedName: emojiName,
 				mimeType: file.mimetype ?? "image/png",
 			},
 			emojiName,

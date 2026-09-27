@@ -27,7 +27,8 @@ async function isAdmin(app: App, userId: string): Promise<boolean> {
  */
 export function stateAction(app: App, actionId: string, handle: StateHandler) {
 	app.action(actionId, async () => {}, async ({ payload, context, body }) => {
-		const value = payload.value ?? body.actions?.[0]?.value;
+		const action = body.actions?.[0] ?? payload;
+		const value = "value" in action ? action.value : undefined;
 		const messageTs = body.message?.ts;
 		if (!value || !messageTs) {
 			console.error(`No value or message ts on ${actionId}`);

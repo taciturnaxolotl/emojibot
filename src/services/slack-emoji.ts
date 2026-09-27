@@ -18,7 +18,7 @@ export async function uploadEmoji(
 
 	const randomUUID = randomUUIDv7();
 	const tempPath = `tmp/${randomUUID}.png`;
-	await Bun.write(tempPath, buffer);
+	await Bun.write(tempPath, new Uint8Array(buffer));
 	const blob = Bun.file(tempPath);
 
 	form.append("image", blob);
