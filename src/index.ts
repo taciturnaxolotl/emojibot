@@ -1,6 +1,7 @@
 import { SlackApp } from "slack-edge";
 import * as features from "./features/index";
 import { cleanupOldTempFiles } from "./services/file-manager";
+import { cachedAuthorize } from "./services/slack-authorize";
 const version = require("../package.json").version;
 
 console.log(
@@ -39,6 +40,7 @@ const app = new SlackApp({
 		SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET!,
 		SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN!,
 	},
+	authorize: cachedAuthorize(process.env.SLACK_BOT_TOKEN!),
 });
 
 console.log("🏗️  Starting EmojiBot...");
