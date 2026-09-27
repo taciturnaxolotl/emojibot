@@ -21,7 +21,6 @@ Simple slack bot to add emoji to your workspace when a user posts a message in a
 ```env
 SLACK_SIGNING_SECRET=your_slack_signing_secret
 SLACK_BOT_TOKEN=your_slack_bot_token
-SLACK_APP_TOKEN=your_slack_app_token
 
 SLACK_BOT_USER_TOKEN=your_slack_bot_user_token # follow the instructions below to get this token
 SLACK_COOKIE="b=..." # get this from the browser following the instructions below

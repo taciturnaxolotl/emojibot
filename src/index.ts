@@ -9,10 +9,12 @@ console.log(
 console.log(`🚀 Loading EmojiBot v${version}`);
 
 // Check required environment variables
+// Note: SLACK_APP_TOKEN is deliberately absent. slack-edge treats its presence
+// as a request to run in Socket Mode, which skips request signature
+// verification entirely, and we serve Slack over HTTP.
 const requiredEnvVars = [
 	"SLACK_SIGNING_SECRET",
 	"SLACK_BOT_TOKEN",
-	"SLACK_APP_TOKEN",
 	"SLACK_BOT_USER_TOKEN",
 	"SLACK_COOKIE",
 	"SLACK_WORKSPACE",
@@ -36,7 +38,6 @@ const app = new SlackApp({
 	env: {
 		SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET!,
 		SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN!,
-		SLACK_APP_TOKEN: process.env.SLACK_APP_TOKEN!,
 	},
 });
 
