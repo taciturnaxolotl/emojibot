@@ -1,4 +1,4 @@
-import type { SlackApp } from "slack-edge";
+import type { App } from "./types";
 import config from "../config";
 import { downloadSlackFile } from "../services/file-manager";
 
@@ -39,11 +39,7 @@ function extractEmojiName(text: string, filename: string): string {
 }
 
 const uploadModal = async (
-	app: SlackApp<{
-		SLACK_SIGNING_SECRET: string;
-		SLACK_BOT_TOKEN: string;
-		SLACK_APP_TOKEN: string;
-	}>,
+	app: App,
 ) => {
 	app.anyMessage(async ({ payload, context }) => {
 		if (

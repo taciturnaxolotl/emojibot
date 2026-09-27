@@ -1,5 +1,6 @@
 import config from "../config";
-import { ModalView, SlackApp } from "slack-edge";
+import type { ModalView } from "slack-edge";
+import type { App } from "./types";
 import { downloadSlackFile } from "../services/file-manager";
 import { type UploadState, imageCache } from "./uploadModal";
 
@@ -32,11 +33,7 @@ function errorView(reason: string): ModalView {
 }
 
 const feature2 = async (
-	app: SlackApp<{
-		SLACK_SIGNING_SECRET: string;
-		SLACK_BOT_TOKEN: string;
-		SLACK_APP_TOKEN: string;
-	}>,
+	app: App,
 ) => {
 	app.shortcut(
 		"retry_emoji",
