@@ -1,10 +1,9 @@
 import config from "../config";
 import type { App } from "./types";
+import { parseEmojiNames } from "../utils/emojiNames";
 
 async function deleteEmojis(emojiNamesStr: string, user: string) {
-	const emojiNames = emojiNamesStr
-		.split(",")
-		.map((name) => name.trim().toLowerCase());
+	const emojiNames = parseEmojiNames(emojiNamesStr);
 	const results = await Promise.all(
 		emojiNames.map(async (emojiName) => {
 			const form = new FormData();

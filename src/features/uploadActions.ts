@@ -1,6 +1,7 @@
 import type { App } from "./types";
 import { humanizeSlackError } from "../utils/translate";
-import { type UploadState, imageCache } from "./uploadModal";
+import { describeEmojiNames, listEmojiNames } from "../utils/emojiNames";
+import { type UploadState, imageCache } from "./emojiPrompt";
 import { uploadEmoji, createAlias } from "../services/slack-emoji";
 import { createPipeline } from "../pipeline";
 import { downloadSlackFile } from "../services/file-manager";
@@ -66,10 +67,7 @@ async function upload(
 		}
 	}
 
-	const [primaryName, ...aliasNames] = state.emojiName
-		.split(",")
-		.map((name) => name.replace(/:/g, "").trim().toLowerCase())
-		.filter((name) => name.length > 0);
+	const [primaryName, ...aliasNames] = state.names;
 
 	const result = await uploadEmoji(primaryName, buffer);
 	if (!result.ok) {
@@ -87,13 +85,13 @@ async function upload(
 			ok: (await createAlias(name, primaryName)).ok,
 		})),
 	);
-	const made = aliases.filter((a) => a.ok).map((a) => `\`:${a.name}:\``);
-	const failed = aliases.filter((a) => !a.ok).map((a) => `\`:${a.name}:\``);
+	const made = aliases.filter((a) => a.ok).map((a) => a.name);
+	const failed = aliases.filter((a) => !a.ok).map((a) => a.name);
 
 	let text = `:${primaryName}: has been added`;
-	if (made.length > 0) text += ` with aliases: ${made.join(", ")}`;
+	if (made.length > 0) text += ` with aliases: ${listEmojiNames(made)}`;
 	if (failed.length > 0) {
-		text += `\n:warning: Failed to create aliases: ${failed.join(", ")}`;
+		text += `\n:warning: Failed to create aliases: ${listEmojiNames(failed)}`;
 	}
 	text += `${warning}\nthanks <@${state.userId}>!`;
 
@@ -110,13 +108,14 @@ function registerButtons(app: App, prefix: string, verb: string) {
 	for (const removeBackground of [false, true]) {
 		const actionId = removeBackground ? `${prefix}_remove_bg` : `${prefix}_normal`;
 		stateAction(app, actionId, async ({ state, messageTs, context }) => {
+			const target = describeEmojiNames(state.names);
 			await say(
 				context,
 				state,
 				messageTs,
 				removeBackground
-					? `Removing background and ${verb} \`:${state.emojiName}:\`...`
-					: `${verb[0].toUpperCase()}${verb.slice(1)} \`:${state.emojiName}:\`...`,
+					? `Removing background and ${verb} ${target}...`
+					: `${verb[0].toUpperCase()}${verb.slice(1)} ${target}...`,
 			);
 			try {
 				await say(

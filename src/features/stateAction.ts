@@ -1,6 +1,6 @@
 import config from "../config";
 import type { App } from "./types";
-import { type UploadState, imageCache } from "./uploadModal";
+import { type UploadState, imageCache } from "./emojiPrompt";
 
 /** Handler that receives an already-parsed, already-authorized prompt. */
 type StateHandler = (args: {

@@ -1,9 +1,10 @@
 import config from "../config";
 import type { ModalView } from "slack-edge";
 import type { App } from "./types";
+import { parseEmojiNames } from "../utils/emojiNames";
 
 function deleteView(emoji: string, thread_ts: string, user: string): ModalView {
-	const emojiList = emoji.split(",").map((e) => e.trim());
+	const emojiList = parseEmojiNames(emoji);
 	return {
 		callback_id: "delete_view",
 		type: "modal",
@@ -98,14 +99,9 @@ const feature2 = async (
 				return;
 			}
 
-			const emojiName =
-				body.message.text.startsWith(":") && body.message.text.endsWith(":")
-					? body.message.text.slice(1, -1)
-					: body.message.text;
-
 			await context.client.views.open({
 				trigger_id: payload.trigger_id,
-				view: deleteView(emojiName, body.message_ts, body.user.id),
+				view: deleteView(body.message.text, body.message_ts, body.user.id),
 			});
 		},
 	);
